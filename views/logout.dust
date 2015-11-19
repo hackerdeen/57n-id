@@ -1,0 +1,8 @@
+{>"page"/}
+{<pageTitle}Log out{/pageTitle}
+{<bodyContent}
+<form method="POST" action="">
+  <p><strong>Are you sure you want to log out?</strong></p>
+  <button type="submit" class="btn btn-primary btn-block">Log out</button>
+</form>
+{/bodyContent}

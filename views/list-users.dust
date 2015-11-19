@@ -1,0 +1,18 @@
+{>"page"/}
+{<pageTitle}User list{/pageTitle}
+{<bodyContent}
+<table class="table">
+  <tr>
+    <th>ID</th>
+    <th>Groups</th>
+  </tr>
+  {#users}
+  <tr>
+    <td><a href="/editUser?id={username|uc}">{username}</a></td>
+    <td><ul class="list-inline">{#groups}<li>{.}</li>{/groups}</ul></td>
+  </tr>
+  {/users}
+</table>
+<a href="/createUser" class="btn btn-primary btn-block">Create new user</a>
+<a href="/" class="btn btn-default btn-block">Return to dashboard</a>
+{/bodyContent}

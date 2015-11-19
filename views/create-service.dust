@@ -1,0 +1,38 @@
+{>"page"/}
+{<pageTitle}{^name}Create{:else}Edit{/name} service{/pageTitle}
+{<bodyContent}
+<form method="POST" action="" class="form-horizontal">
+  <div class="form-group">
+    <label for="name" class="col-md-4 control-label">Name</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="name" name="name" {?name}readonly value="{name}"{/name}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="url" class="col-md-4 control-label">CAS URL</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="url" name="url" {?url}value="{url}"{/url}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="url" class="col-md-4 control-label">CAS site</label>
+    <div class="col-md-8">
+      <div class="radio">
+        <label>
+          <input type="radio" id="site_member" name="site" value="member" {?needMember}checked{/needMember}>
+          id.57north.org.uk
+        </label>
+      </div>
+      <div class="radio">
+        <label>
+          <input type="radio" id="site_guest" name="site" value="guest" {^needMember}checked{/needMember}>
+          guest.id.57north.org.uk
+        </label>
+      </div>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary btn-block">{^name}Create{:else}Edit{/name} service</button>
+  {?name}<button type="submit" class="btn btn-danger btn-block" name="delete">Delete service</button>{/name}
+  <a href="/listServices" class="btn btn-default btn-block">Return to service list</a>
+</form>
+{/bodyContent}

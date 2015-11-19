@@ -1,0 +1,18 @@
+{>"page"/}
+{<pageTitle}Service list{/pageTitle}
+{<bodyContent}
+<table class="table">
+  <tr>
+    <th>Name</th>
+    <th>URL</th>
+  </tr>
+  {#services}
+  <tr>
+    <td>{?isAdmin}<a href="/editService?name={name|uc}">{name}</a>{:else}{name}{/isAdmin}</td>
+    <td><a href="{loginUrl}">{url}</a></td>
+  </tr>
+  {/services}
+</table>
+{?isAdmin}<a href="/createService" class="btn btn-primary btn-block">Create new service</a>{/isAdmin}
+<a href="/" class="btn btn-default btn-block">Return to dashboard</a>
+{/bodyContent}

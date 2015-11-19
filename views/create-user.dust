@@ -1,0 +1,43 @@
+{>"page"/}
+{<pageTitle}{^username}Create{:else}Edit{/username} user{/pageTitle}
+{<bodyContent}
+<form method="POST" action="" class="form-horizontal">
+  <div class="form-group">
+    <label for="username" class="col-md-4 control-label">57North ID</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="username" name="username" {?username}readonly value="{username}"{/username}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="username" class="col-md-4 control-label">Common name</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="cn" name="cn" {?cn}value="{cn}"{/cn}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="username" class="col-md-4 control-label">Surname</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="sn" name="sn" {?sn}value="{sn}"{/sn}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="groups" class="col-md-4 control-label">Groups</label>
+    <div class="col-md-8">
+      <select multiple class="form-control" name="groups[]">
+      {#groups}
+        <option value="{dn}" {?enabled}selected{/enabled}>{name}</option>
+      {/groups}
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="password" class="col-md-4 control-label">Password</label>
+    <div class="col-md-8">
+      <input type="password" class="form-control" id="password" name="password">
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary btn-block">{^username}Create{:else}Edit{/username} user</button>
+  {?username}<button type="submit" class="btn btn-danger btn-block" name="delete">Delete user</button>{/username}
+  <a href="/listUsers" class="btn btn-default btn-block">Return to service list</a>
+</form>
+{/bodyContent}
