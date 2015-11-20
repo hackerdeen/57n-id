@@ -19,13 +19,7 @@ var moment = require("moment");
 var xmlbuilder = require("xmlbuilder");
 
 var config = require("./config.js");
-
-var services = JSON.parse(fs.readFileSync(config.servicesFile));
-var servicesByUrl = {};
-Object.keys(services).forEach(function(key) {
-    var service = services[key];
-    servicesByUrl[service.url] = extend({ name: key }, service);
-});
+var services = require("./services.js");
 
 if (typeof String.prototype.startsWith != 'function') {
   String.prototype.startsWith = function (str){
@@ -43,9 +37,9 @@ function loadUser(username) {
     user.username = username;
     user.authenticationDate = moment(user.authenticationDate);
     user.services = user.services.filter(function(key) {
-        return !!services[key];
+        return !!services.byName[key];
     }).map(function(key) {
-        return extend({ name: key }, services[key]);
+        return extend({ name: key }, services.byName[key]);
     });
     return user;
 }
@@ -263,10 +257,10 @@ app.route("/changePassword").get(requireCorrectSite, function(req, res) {
 app.get("/listServices", requireLogin, requireCorrectSite, function(req, res) {
     res.render("list-services", {
         isAdmin: req.user.isAdmin,
-        services: Object.keys(services).filter(function(key) {
-            return !services[key].needMember || req.user.isMember;
+        services: Object.keys(services.byName).filter(function(key) {
+            return !services.byName[key].needMember || req.user.isMember;
         }).map(function(key) {
-            var service = services[key];
+            var service = services.byName[key];
             var site = service.needMember ? config.memberSite : config.guestSite;
             return {
                 name: key,
@@ -279,7 +273,7 @@ app.get("/listServices", requireLogin, requireCorrectSite, function(req, res) {
 
 app.route(/^\/(create|edit)Service$/).get(requireAdmin, requireCorrectSite, function(req, res) {
     if(req.query.name) {
-        var service = services[req.query.name];
+        var service = services.byName[req.query.name];
         if(service) {
             return res.render("create-service", {
                 name: req.query.name,
@@ -291,14 +285,10 @@ app.route(/^\/(create|edit)Service$/).get(requireAdmin, requireCorrectSite, func
     res.render("create-service");
 }).post(requireAdmin, function(req, res) {
     if(req.body.delete !== undefined) {
-        delete services[req.body.name];
+        services.deleteService(req.body.name);
     } else {
-        services[req.body.name] = {
-            url: req.body.url,
-            needMember: req.body.site == "member"
-        };
+        services.modifyService(req.body.name, req.body.url, req.body.site == "member");
     }
-    fs.writeFileSync(config.servicesFile, JSON.stringify(services));
     res.redirect("/listServices");
 });
 
@@ -665,14 +655,14 @@ app.use(function(req, res, next) {
         });
     };
     req.isValidService = function() {
-        return service && servicesByUrl[service] &&
-          (servicesByUrl[service].needMember ? config.memberSite : config.guestSite) == req.hostname;
+        return service && services.byUrl[service] &&
+          (services.byUrl[service].needMember ? config.memberSite : config.guestSite) == req.hostname;
     };
     req.saveService = function() {
         if(req.isValidService() && !req.user.services.some(function(userService) {
             return userService.url == service;
         })) {
-            req.user.services.push(servicesByUrl[service]);
+            req.user.services.push(services.byUrl[service]);
             req.saveUser();
         }
     };
