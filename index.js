@@ -15,6 +15,7 @@ var asn1 = require("asn1");
 var xmlbuilder = require("xmlbuilder");
 
 var config = require("./config.js");
+var middleware = require("./middleware.js");
 var services = require("./services.js");
 var users = require("./users.js");
 var passport = require("./passport.js");
@@ -47,40 +48,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-function requireLogin(req, res, next) {
-    if(req.isAuthenticated()) {
-        next();
-    } else {
-        res.redirect("/login");
-    }
-}
-
-function requireAdmin(req, res, next) {
-    if(req.isAuthenticated() && req.user.isAdmin) {
-        next();
-    } else {
-        res.redirect("/");
-    }
-}
-
-function requireCorrectSite(req, res, next) {
-    if(!req.isAuthenticated()) {
-        return next();
-    }
-
-    if(req.hostname == config.guestSite && req.user.isMember) {
-        var domain = config.memberSite;
-    } else if(req.hostname == config.memberSite && !req.user.isMember) {
-        var domain = config.guestSite;
-    } else {
-        return next();
-    }
-
-    var myUrl = url.parse(req.url);
-    myUrl.host = domain;
-    res.redirect(url.format(myUrl));
-}
-
 app.use(function(req, res, next) {
     req.users.saveUser = function() {
         users.saveUser(req.user);
@@ -89,7 +56,7 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.get("/", requireLogin, requireCorrectSite, function(req, res) {
+app.get("/", middleware.requireLogin, middleware.requireCorrectSite, function(req, res) {
     res.render("dashboard", {
         username: req.user.username,
         isAdmin: req.user.isAdmin,
@@ -102,7 +69,7 @@ app.get("/", requireLogin, requireCorrectSite, function(req, res) {
     });
 });
 
-app.route("/changePassword").get(requireCorrectSite, function(req, res) {
+app.route("/changePassword").get(middleware.requireCorrectSite, function(req, res) {
     res.render("change-password");
 }).post(function(req, res) {
     if(req.body.newPassword != req.body.newPasswordConfirmation) {
@@ -137,7 +104,7 @@ app.route("/changePassword").get(requireCorrectSite, function(req, res) {
     });
 });
 
-app.get("/listServices", requireLogin, requireCorrectSite, function(req, res) {
+app.get("/listServices", middleware.requireLogin, middleware.requireCorrectSite, function(req, res) {
     res.render("list-services", {
         isAdmin: req.user.isAdmin,
         services: Object.keys(services.byName).filter(function(key) {
@@ -154,7 +121,7 @@ app.get("/listServices", requireLogin, requireCorrectSite, function(req, res) {
     });
 });
 
-app.route(/^\/(create|edit)Service$/).get(requireAdmin, requireCorrectSite, function(req, res) {
+app.route(/^\/(create|edit)Service$/).get(middleware.requireAdmin, middleware.requireCorrectSite, function(req, res) {
     if(req.query.name) {
         var service = services.byName[req.query.name];
         if(service) {
@@ -166,7 +133,7 @@ app.route(/^\/(create|edit)Service$/).get(requireAdmin, requireCorrectSite, func
         }
     }
     res.render("create-service");
-}).post(requireAdmin, function(req, res) {
+}).post(middleware.requireAdmin, function(req, res) {
     if(req.body.delete !== undefined) {
         services.deleteService(req.body.name);
     } else {
@@ -175,7 +142,7 @@ app.route(/^\/(create|edit)Service$/).get(requireAdmin, requireCorrectSite, func
     res.redirect("/listServices");
 });
 
-app.get("/listUsers", requireAdmin, requireCorrectSite, function(req, res) {
+app.get("/listUsers", middleware.requireAdmin, middleware.requireCorrectSite, function(req, res) {
     var client = ldap.createClient({
         url: config.ldapUrl
     });
@@ -249,7 +216,7 @@ app.get("/listUsers", requireAdmin, requireCorrectSite, function(req, res) {
     });
 });
 
-app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, function(req, res) {
+app.route(/^\/(create|edit)User$/).get(middleware.requireAdmin, middleware.requireCorrectSite, function(req, res) {
     if(req.query.id) {
         var client = ldap.createClient({
             url: config.ldapUrl
@@ -343,7 +310,7 @@ app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, functio
     } else {
         res.render("create-user");
     }
-}).post(requireAdmin, function(req, res) {
+}).post(middleware.requireAdmin, function(req, res) {
     var client = ldap.createClient({
         url: config.ldapUrl
     });
@@ -569,7 +536,7 @@ app.route("/login").get(function(req, res) {
     }
 });
 
-app.route("/logout").get(requireCorrectSite, function(req, res) {
+app.route("/logout").get(middleware.requireCorrectSite, function(req, res) {
     if(req.isAuthenticated()) {
       res.render("logout");
     } else {
