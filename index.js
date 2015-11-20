@@ -2,7 +2,6 @@
 
 var async = require("async");
 var path = require("path");
-var fs = require("fs");
 var url = require("url");
 var querystring = require("querystring");
 var extend = require("util")._extend;
@@ -13,14 +12,13 @@ var FileStore = require("session-file-store")(session);
 var adaro = require("adaro");
 var ldap = require("ldapjs");
 var asn1 = require("asn1");
-var uid2 = require("uid2");
-var moment = require("moment");
 var xmlbuilder = require("xmlbuilder");
 
 var config = require("./config.js");
 var services = require("./services.js");
 var users = require("./users.js");
 var passport = require("./passport.js");
+var tickets = require("./tickets.js");
 
 if (typeof String.prototype.startsWith != 'function') {
   String.prototype.startsWith = function (str){
@@ -491,47 +489,10 @@ app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, functio
 
 // CAS
 
-function storeTicketInfo(prefix, expires, info) {
-    if(!info) {
-        info = expires;
-        expires = moment().add(5, "m");
-    }
-    var ticket = prefix+uid2(24);
-    fs.writeFileSync(path.join(config.ticketsDir, ticket), JSON.stringify({
-        expires: expires.toISOString(),
-        info: info
-    }));
-    return ticket;
-}
-
-function loadTicketInfo(ticket, destroy) {
-    if(!/^[A-Za-z0-9-]+$/.test(ticket)) {
-        return null;
-    }
-
-    try {
-        var packet = JSON.parse(fs.readFileSync(path.join(config.ticketsDir, ticket)));
-    } catch (e) {
-        return null;
-    }
-
-    if(destroy) {
-        try {
-            fs.unlinkSync(path.join(config.ticketsDir, ticket));
-        } catch (e) {}
-    }
-
-    if(moment(packet.expires).isBefore()) {
-        return null;
-    } else {
-        return packet.info;
-    }
-}
-
 app.use(function(req, res, next) {
     var service = req.query.service || req.body.service;
     req.generateServiceTicket = function(newLogin) {
-        return storeTicketInfo("ST-", {
+        return tickets.create("ST-", {
             site: req.hostname,
             service: service,
             username: req.user.username,
@@ -624,7 +585,7 @@ app.get("/validate", function(req, res) {
         return res.send("no\n");
     }
 
-    var info = loadTicketInfo(req.query.ticket, true);
+    var info = tickets.load(req.query.ticket, true);
 
     if(info && info.site == req.hostname && info.service == req.query.service && (!req.query.renew || info.newLogin)) {
         res.send("yes\n");
@@ -654,7 +615,7 @@ app.get(/\/(?:p3\/)?(service|proxy)Validate$/, function(req, res) {
         return err("INVALID_TICKET_SPEC", "Invalid ticket - ticket is not a ST"+(req.params[0] == "proxy" ? " or PT" : "")+".");
     }
 
-    var info = loadTicketInfo(ticket, true);
+    var info = tickets.load(ticket, true);
     if(!info) {
         return err("INVALID_TICKET", "Invalid ticket - ticket does not exist.")
     }
@@ -712,7 +673,7 @@ app.get("/proxy", function(req, res) {
         return err("INVALID_TICKET_SPEC", "Invalid ticket - ticket is not a PGT.");
     }
 
-    var info = loadTicketInfo(pgt, false);
+    var info = tickets.load(pgt, false);
     if(!info) {
         return err("INVALID_TICKET", "Invalid ticket - ticket does not exist.");
     }
@@ -722,7 +683,7 @@ app.get("/proxy", function(req, res) {
 
     var proxies = [info.pgtUrl];
     proxies.push.apply(proxies, info.proxies);
-    var ticket = storeTicketInfo("PT-", {
+    var ticket = tickets.create("PT-", {
         site: info.site,
         service: targetService,
         username: info.username,
