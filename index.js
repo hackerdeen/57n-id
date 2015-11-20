@@ -20,39 +20,12 @@ var xmlbuilder = require("xmlbuilder");
 
 var config = require("./config.js");
 var services = require("./services.js");
+var users = require("./users.js");
 
 if (typeof String.prototype.startsWith != 'function') {
   String.prototype.startsWith = function (str){
     return this.slice(0, str.length) == str;
   };
-}
-
-function loadUser(username) {
-    try {
-        var user = JSON.parse(fs.readFileSync(path.join(config.usersDir, username)));
-    } catch(e) {
-        return null;
-    }
-
-    user.username = username;
-    user.authenticationDate = moment(user.authenticationDate);
-    user.services = user.services.filter(function(key) {
-        return !!services.byName[key];
-    }).map(function(key) {
-        return extend({ name: key }, services.byName[key]);
-    });
-    return user;
-}
-
-function saveUser(user) {
-    var user = extend({}, user);
-    user.services = Object.keys(user.services).map(function(key) {
-        return user.services[key].name;
-    });
-    user.authenticationDate = user.authenticationDate.toISOString();
-    var username = user.username;
-    delete user.username;
-    fs.writeFileSync(path.join(config.usersDir, username), JSON.stringify(user));
 }
 
 passport.use(new (require('passport-local').Strategy)(function(username, password, done) {
@@ -69,7 +42,7 @@ passport.use(new (require('passport-local').Strategy)(function(username, passwor
             return done(err);
         }
 
-        var user = loadUser(username) || {};
+        var user = users.loadUser(username) || {};
         user.username = username;
         user.services = user.services || [];
         user.authenticationDate = moment();
@@ -122,7 +95,7 @@ passport.use(new (require('passport-local').Strategy)(function(username, passwor
                             return done(ldap.getError(result));
                         }
 
-                        saveUser(user);
+                        users.saveUser(user);
                         done(null, user);
                     });
                 });
@@ -136,7 +109,7 @@ passport.serializeUser(function(user, done) {
 });
 
 passport.deserializeUser(function(username, done) {
-    var user = loadUser(username);
+    var user = users.loadUser(username);
     if(!user) {
         done("Can't read user file");
     }
@@ -199,8 +172,8 @@ function requireCorrectSite(req, res, next) {
 }
 
 app.use(function(req, res, next) {
-    req.saveUser = function() {
-        saveUser(req.user);
+    req.users.saveUser = function() {
+        users.saveUser(req.user);
     };
 
     next();
