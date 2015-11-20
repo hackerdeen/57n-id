@@ -10,14 +10,19 @@ Object.keys(byName).forEach(function(key) {
 });
 
 exports.modifyService = function modifyService(name, url, needMember) {
-    byName[name] = {
+    if(byName[name]) {
+        delete byUrl[byName[name].url];
+    }
+    byName[name] = service = {
         url: url,
         needMember: needMember
     };
+    byUrl[url] = extend({ name: name }, service);
     fs.writeFileSync(config.servicesFile, JSON.stringify(byName));
 };
 
 exports.deleteService = function deleteService(name) {
+    delete byUrl[byName[name].url];
     delete byName[name];
     fs.writeFileSync(config.servicesFile, JSON.stringify(byName));
 };
