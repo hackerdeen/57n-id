@@ -18,23 +18,9 @@ var uid2 = require("uid2");
 var moment = require("moment");
 var xmlbuilder = require("xmlbuilder");
 
-var publicDir = path.join(__dirname, "public");
-var viewsDir = path.join(__dirname, "views");
-var servicesFile = path.join(__dirname, "services.json");
-var usersDir = path.join(__dirname, "users");
-var ticketsDir = path.join(__dirname, "tickets");
-var sessionsDir = path.join(__dirname, "sessions");
-var memberSite = "id.57north.org.uk";
-var guestSite = "guest."+memberSite;
-var ldapUrl = "ldap://localhost";
-var ldapUsersDN = "ou=users,dc=57north,dc=org,dc=uk";
-var ldapGroupsDN = "ou=groups,dc=57north,dc=org,dc=uk";
-var memberGroup = "cn=members,"+ldapGroupsDN;
-var adminGroup = "cn=id-admins,"+ldapGroupsDN;
-var idSystemDN = "uid=id-admin,ou=special-users,dc=57north,dc=org,dc=uk";
-var idSystemPassword = "poor stood burst island";
+var config = require("./config.js");
 
-var services = JSON.parse(fs.readFileSync(servicesFile));
+var services = JSON.parse(fs.readFileSync(config.servicesFile));
 var servicesByUrl = {};
 Object.keys(services).forEach(function(key) {
     var service = services[key];
@@ -49,7 +35,7 @@ if (typeof String.prototype.startsWith != 'function') {
 
 function loadUser(username) {
     try {
-        var user = JSON.parse(fs.readFileSync(path.join(usersDir, username)));
+        var user = JSON.parse(fs.readFileSync(path.join(config.usersDir, username)));
     } catch(e) {
         return null;
     }
@@ -72,14 +58,14 @@ function saveUser(user) {
     user.authenticationDate = user.authenticationDate.toISOString();
     var username = user.username;
     delete user.username;
-    fs.writeFileSync(path.join(usersDir, username), JSON.stringify(user));
+    fs.writeFileSync(path.join(config.usersDir, username), JSON.stringify(user));
 }
 
 passport.use(new (require('passport-local').Strategy)(function(username, password, done) {
     var client = ldap.createClient({
-        url: ldapUrl
+        url: config.ldapUrl
     });
-    var userDN = new ldap.RDN({uid: username}).toString()+","+ldapUsersDN;
+    var userDN = new ldap.RDN({uid: username}).toString()+","+config.ldapUsersDN;
     client.bind(userDN, password, function(err) {
         if(err) {
             client.unbind();
@@ -104,7 +90,7 @@ passport.use(new (require('passport-local').Strategy)(function(username, passwor
                 client.unbind();
                 return done(err);
             }
-            
+
             res.on("searchEntry", function(entry) {
                 user.username = entry.object.uid;
             }).on("error", function(err) {
@@ -116,7 +102,7 @@ passport.use(new (require('passport-local').Strategy)(function(username, passwor
                     return done(ldap.getError(result));
                 }
 
-                client.search(ldapGroupsDN, {
+                client.search(config.ldapGroupsDN, {
                     scope: "sub",
                     filter: "(member="+userDN+")",
                     attributes: ["dn"]
@@ -128,9 +114,9 @@ passport.use(new (require('passport-local').Strategy)(function(username, passwor
 
                     res.on("searchEntry", function(entry) {
                         var dn = entry.dn.toString();
-                        if(dn == memberGroup) {
+                        if(dn == config.memberGroup) {
                            user.isMember = true;
-                        } else if(dn == adminGroup) {
+                        } else if(dn == config.adminGroup) {
                             user.isAdmin = true;
                         }
                     }).on("error", function(err) {
@@ -166,20 +152,20 @@ passport.deserializeUser(function(username, done) {
 var app = express();
 app.engine("dust", adaro());
 app.set("view engine", "dust");
-app.set("views", viewsDir);
-app.use(express.static(publicDir));
+app.set("views", config.viewsDir);
+app.use(express.static(config.publicDir));
 app.use(bodyParser.urlencoded({
     extended: true
 }));
 app.use(session({
     store: new FileStore({
-        path: sessionsDir
+        path: config.sessionsDir
     }),
     secret: "thisistotallysecret",
     resave: false,
     saveUninitialized: false,
     name: "TGC-session",
-    cookie: { domain: "."+memberSite }
+    cookie: { domain: "."+config.memberSite }
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -205,10 +191,10 @@ function requireCorrectSite(req, res, next) {
         return next();
     }
 
-    if(req.hostname == guestSite && req.user.isMember) {
-        var domain = memberSite;
-    } else if(req.hostname == memberSite && !req.user.isMember) {
-        var domain = guestSite;
+    if(req.hostname == config.guestSite && req.user.isMember) {
+        var domain = config.memberSite;
+    } else if(req.hostname == config.memberSite && !req.user.isMember) {
+        var domain = config.guestSite;
     } else {
         return next();
     }
@@ -231,7 +217,7 @@ app.get("/", requireLogin, requireCorrectSite, function(req, res) {
         username: req.user.username,
         isAdmin: req.user.isAdmin,
         services: req.user.services.map(function(service) {
-            var site = service.needMember ? memberSite : guestSite;
+            var site = service.needMember ? config.memberSite : config.guestSite;
             return extend({
                 loginUrl: "https://"+site+"/login?service="+encodeURIComponent(service.url)
             }, service);
@@ -247,11 +233,11 @@ app.route("/changePassword").get(requireCorrectSite, function(req, res) {
     }
 
     var client = ldap.createClient({
-        url: ldapUrl
+        url: config.ldapUrl
     });
 
     var ber = new asn1.Ber.Writer();
-    var userDN = new ldap.RDN({uid: req.body.username}).toString()+","+ldapUsersDN;
+    var userDN = new ldap.RDN({uid: req.body.username}).toString()+","+config.ldapUsersDN;
     ber.startSequence();
     ber.writeString(userDN, 0x80);
     ber.writeString(req.body.password, 0x81);
@@ -281,7 +267,7 @@ app.get("/listServices", requireLogin, requireCorrectSite, function(req, res) {
             return !services[key].needMember || req.user.isMember;
         }).map(function(key) {
             var service = services[key];
-            var site = service.needMember ? memberSite : guestSite;
+            var site = service.needMember ? config.memberSite : config.guestSite;
             return {
                 name: key,
                 url: service.url,
@@ -312,22 +298,22 @@ app.route(/^\/(create|edit)Service$/).get(requireAdmin, requireCorrectSite, func
             needMember: req.body.site == "member"
         };
     }
-    fs.writeFileSync(servicesFile, JSON.stringify(services));
+    fs.writeFileSync(config.servicesFile, JSON.stringify(services));
     res.redirect("/listServices");
 });
 
 app.get("/listUsers", requireAdmin, requireCorrectSite, function(req, res) {
     var client = ldap.createClient({
-        url: ldapUrl
+        url: config.ldapUrl
     });
 
-    client.bind(idSystemDN, idSystemPassword, function(err) {
+    client.bind(config.idSystemDN, config.idSystemPassword, function(err) {
         if(err) {
             client.unbind();
             return res.redirect("/");
         }
 
-        client.search(ldapUsersDN, {
+        client.search(config.ldapUsersDN, {
             scope: "one",
             filter: "(uid=*)",
             attributes: ["uid"]
@@ -354,7 +340,7 @@ app.get("/listUsers", requireAdmin, requireCorrectSite, function(req, res) {
                 }
 
                 async.each(users, function(user, done) {
-                    client.search(ldapGroupsDN, {
+                    client.search(config.ldapGroupsDN, {
                         scope: "sub",
                         filter: "(member="+user.dn+")",
                         attributes: ["cn"]
@@ -393,15 +379,15 @@ app.get("/listUsers", requireAdmin, requireCorrectSite, function(req, res) {
 app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, function(req, res) {
     if(req.query.id) {
         var client = ldap.createClient({
-            url: ldapUrl
+            url: config.ldapUrl
         });
-        client.bind(idSystemDN, idSystemPassword, function(err) {
+        client.bind(config.idSystemDN, config.idSystemPassword, function(err) {
             if(err) {
                 client.unbind();
                 return res.redirect("/listUsers");
             }
 
-            var userDN = new ldap.RDN({uid: req.query.id}).toString()+","+ldapUsersDN;
+            var userDN = new ldap.RDN({uid: req.query.id}).toString()+","+config.ldapUsersDN;
             client.search(userDN, {
                 scope: "base",
                 filter: "(uid=*)",
@@ -432,7 +418,7 @@ app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, functio
 
                     var groups = [];
 
-                    client.search(ldapGroupsDN, {
+                    client.search(config.ldapGroupsDN, {
                         scope: "sub",
                         filter: "(objectClass=groupOfNames)",
                         attributes: ["cn"]
@@ -486,12 +472,12 @@ app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, functio
     }
 }).post(requireAdmin, function(req, res) {
     var client = ldap.createClient({
-        url: ldapUrl
+        url: config.ldapUrl
     });
 
-    var userDN = new ldap.RDN({uid: req.body.username}).toString()+","+ldapUsersDN;
+    var userDN = new ldap.RDN({uid: req.body.username}).toString()+","+config.ldapUsersDN;
 
-    client.bind(idSystemDN, idSystemPassword, function(err) {
+    client.bind(config.idSystemDN, config.idSystemPassword, function(err) {
         if(err) {
             client.unbind();
             return res.redirect("/"+req.params[0]+"User"+(req.body.username ? "?id="+req.body.username : ""));
@@ -537,7 +523,7 @@ app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, functio
                     modification: {
                         sn: req.body.sn
                     }
-                }),                
+                }),
             ], function(err) {
                 if(err) {
                     client.unbind();
@@ -577,7 +563,7 @@ app.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, functio
     }
 
     function editGroups(newGroups, done) {
-        client.search(ldapGroupsDN, {
+        client.search(config.ldapGroupsDN, {
             scope: "sub",
             filter: "(member="+userDN+")",
             attributes: ["dn"]
@@ -636,7 +622,7 @@ function storeTicketInfo(prefix, expires, info) {
         expires = moment().add(5, "m");
     }
     var ticket = prefix+uid2(24);
-    fs.writeFileSync(path.join(ticketsDir, ticket), JSON.stringify({
+    fs.writeFileSync(path.join(config.ticketsDir, ticket), JSON.stringify({
         expires: expires.toISOString(),
         info: info
     }));
@@ -649,14 +635,14 @@ function loadTicketInfo(ticket, destroy) {
     }
 
     try {
-        var packet = JSON.parse(fs.readFileSync(path.join(ticketsDir, ticket)));
+        var packet = JSON.parse(fs.readFileSync(path.join(config.ticketsDir, ticket)));
     } catch (e) {
         return null;
     }
 
     if(destroy) {
         try {
-            fs.unlinkSync(path.join(ticketsDir, ticket));
+            fs.unlinkSync(path.join(config.ticketsDir, ticket));
         } catch (e) {}
     }
 
@@ -680,7 +666,7 @@ app.use(function(req, res, next) {
     };
     req.isValidService = function() {
         return service && servicesByUrl[service] &&
-          (servicesByUrl[service].needMember ? memberSite : guestSite) == req.hostname;
+          (servicesByUrl[service].needMember ? config.memberSite : config.guestSite) == req.hostname;
     };
     req.saveService = function() {
         if(req.isValidService() && !req.user.services.some(function(userService) {
@@ -704,9 +690,9 @@ app.use(function(req, res, next) {
         }
     };
     req.isCorrectUserType = function() {
-        return req.isAuthenticated() && (req.hostname == guestSite || req.user.isMember);
+        return req.isAuthenticated() && (req.hostname == config.guestSite || req.user.isMember);
     };
-    
+
     next();
 });
 
@@ -722,9 +708,9 @@ app.route("/login").get(function(req, res) {
     if(req.query.gateway) {
         return res.redirectToService();
     }
-    if(!req.isValidService() && req.hostname == guestSite) { 
+    if(!req.isValidService() && req.hostname == config.guestSite) {
         var myUrl = url.parse(req.url);
-        myUrl.host = memberSite;
+        myUrl.host = config.memberSite;
         return res.redirect(url.format(myUrl));
     }
 
