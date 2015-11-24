@@ -20,3 +20,5 @@ router.route("/changePassword").get(requireCorrectSite, changePassword.get).
 router.get("/listUsers", requireAdmin, requireCorrectSite, users.list);
 router.route(/^\/(create|edit)User$/).get(requireAdmin, requireCorrectSite, users.edit.get).
                                       post(middleware.requireAdmin, users.edit.post);
+router.route("/register").get(users.register.get).
+                          post(users.register.post);

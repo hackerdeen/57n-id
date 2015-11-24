@@ -16,5 +16,6 @@
     </div>
   </div>
   <button type="submit" class="btn btn-primary btn-block">Log in</button>
+  <a href="/register" class="btn btn-default btn-block">Not registered?</a>
 </form>
 {/bodyContent}

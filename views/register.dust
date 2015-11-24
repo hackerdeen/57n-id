@@ -1,0 +1,32 @@
+{>"page"/}
+{<pageTitle}Register{/pageTitle}
+{<bodyContent}
+<form method="POST" action="" class="form-horizontal">
+  <div class="form-group">
+    <label for="username" class="col-md-4 control-label">57North ID</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="username" name="username" {?username}readonly value="{username}"{/username}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="username" class="col-md-4 control-label">Common name</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="cn" name="cn" {?cn}value="{cn}"{/cn}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="username" class="col-md-4 control-label">Surname</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="sn" name="sn" {?sn}value="{sn}"{/sn}>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="password" class="col-md-4 control-label">Password</label>
+    <div class="col-md-8">
+      <input type="password" class="form-control" id="password" name="password">
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary btn-block">Register</button>
+  <a href="/login" class="btn btn-default btn-block">Return to login</a>
+</form>
+{/bodyContent}
