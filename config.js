@@ -10,6 +10,7 @@ exports.memberGroup = memberGroup = "cn=members,"+ldapGroupsDN;
 exports.adminGroup = adminGroup = "cn=id-admins,"+ldapGroupsDN;
 exports.idSystemDN = idSystemDN = "uid=id-admin,ou=special-users,dc=57north,dc=org,dc=uk";
 exports.idSystemPassword = idSystemPassword = "poor stood burst island";
+exports.redisUrl = redisUrl = "/tmp/redis-57n-id.sock";
 
 // Probably don't touch these
 exports.publicDir = publicDir = path.join(__dirname, "public");
