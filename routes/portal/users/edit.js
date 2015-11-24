@@ -141,6 +141,15 @@ exports.post = function(req, res) {
                 });
             });
         } else {
+            if("delete" in req.body) {
+                return client.del(userDN, function(err) {
+                    client.unbind();
+                    if(err) {
+                        return res.redirect("/editUser?id="+req.body.username);
+                    }
+                    res.redirect("/listUsers");
+                });
+            }
             client.modify(userDN, [
                 new ldap.Change({
                     operation: "replace",

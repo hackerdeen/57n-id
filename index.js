@@ -1,4 +1,4 @@
-// TODO: user deletion, guest creation, proxy tokens
+// TODO: proxy tokens
 
 var express = require("express");
 var bodyParser = require("body-parser");
