@@ -71,7 +71,7 @@ exports.cas3 = function(req, res) {
     });
 
     function err(code, message) {
-        root.ele("proxyFailure", {code: code}, message);
+        root.ele("cas:authenticationFailure", {code: code}, message);
         res.send(root.toString());
     }
 };
