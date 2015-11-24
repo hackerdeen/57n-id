@@ -1,15 +1,18 @@
-var fs = require("fs");
 var extend = require("util")._extend;
 var config = require("./config.js");
+var redisc = require("./redis.js");
 
-exports.byName = byName = JSON.parse(fs.readFileSync(config.servicesFile));
+exports.byName = byName = {};
 exports.byUrl = byUrl = {};
-Object.keys(byName).forEach(function(key) {
-    var service = byName[key];
-    byUrl[service.url] = extend({ name: key }, service);
+redisc.get(config.servicesKey, function(err, reply) {
+    extend(byName, JSON.parse(reply || "{}"));
+    Object.keys(byName).forEach(function(key) {
+        var service = byName[key];
+        byUrl[service.url] = extend({ name: key }, service);
+    });
 });
 
-exports.modifyService = function modifyService(name, url, needMember) {
+exports.modifyService = function modifyService(name, url, needMember, done) {
     if(byName[name]) {
         delete byUrl[byName[name].url];
     }
@@ -18,11 +21,11 @@ exports.modifyService = function modifyService(name, url, needMember) {
         needMember: needMember
     };
     byUrl[url] = extend({ name: name }, service);
-    fs.writeFileSync(config.servicesFile, JSON.stringify(byName));
+    redisc.set(config.servicesKey, JSON.stringify(byName), done);
 };
 
-exports.deleteService = function deleteService(name) {
+exports.deleteService = function deleteService(name, done) {
     delete byUrl[byName[name].url];
     delete byName[name];
-    fs.writeFileSync(config.servicesFile, JSON.stringify(byName));
+    redisc.set(config.servicesKey, JSON.stringify(byName), done);
 };

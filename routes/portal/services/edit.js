@@ -16,9 +16,11 @@ exports.get = function(req, res) {
 
 exports.post = function(req, res) {
     if(req.body.delete !== undefined) {
-        services.deleteService(req.body.name);
+        services.deleteService(req.body.name, redirect);
     } else {
-        services.modifyService(req.body.name, req.body.url, req.body.site == "member");
+        services.modifyService(req.body.name, req.body.url, req.body.site == "member", redirect);
     }
-    res.redirect("/listServices");
+    function redirect(err) {
+        res.redirect("/listServices");
+    }
 };

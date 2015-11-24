@@ -15,7 +15,7 @@ exports.redisUrl = redisUrl = "/tmp/redis-57n-id.sock";
 // Probably don't touch these
 exports.publicDir = publicDir = path.join(__dirname, "public");
 exports.viewsDir = viewsDir = path.join(__dirname, "views");
-exports.servicesFile = servicesFile = path.join(__dirname, "services.json");
+exports.servicesKey = servicesKey = "services";
 exports.usersDir = usersDir = path.join(__dirname, "users");
 exports.ticketsDir = ticketsDir = path.join(__dirname, "tickets");
 exports.sessionsDir = sessionsDir = path.join(__dirname, "sessions");
