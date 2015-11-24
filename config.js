@@ -18,4 +18,4 @@ exports.viewsDir = viewsDir = path.join(__dirname, "views");
 exports.servicesKey = servicesKey = "services";
 exports.userKey = userKey = "u:%s";
 exports.ticketKey = ticketKey = "t:%s";
-exports.sessionsDir = sessionsDir = path.join(__dirname, "sessions");
+exports.sessionPrefis = sessionPrefix = "s:";
