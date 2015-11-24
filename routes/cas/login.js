@@ -5,8 +5,9 @@ var passport = require("../../passport.js");
 exports.get = function(req, res) {
     if(req.isCorrectUserType() && !req.query.renew) {
         if(req.isValidService()) {
-            req.saveService();
-            return res.redirectToService({ticket: req.generateServiceTicket(false)});
+            return req.saveService(function(err) {
+                res.redirectToService({ticket: req.generateServiceTicket(false)});
+            });
         } else {
             return res.redirect("/");
         }
@@ -34,8 +35,9 @@ exports.post = [passport.authenticate("local", {
             return res.redirect("/login");
         }
 
-        req.saveService();
-        return res.redirectToService({ticket: req.generateServiceTicket(true)});
+        return req.saveService(function(err) {
+            res.redirectToService({ticket: req.generateServiceTicket(true)});
+        });
     } else {
         return res.redirect("/");
     }

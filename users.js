@@ -1,29 +1,31 @@
 var path = require("path");
-var fs = require("fs");
+var util = require("util");
 var extend = require("util")._extend;
 var moment = require("moment");
 
 var config = require("./config.js");
+var redisc = require("./redis.js");
 var services = require("./services.js");
 
-exports.loadUser = function loadUser(username) {
-    try {
-        var user = JSON.parse(fs.readFileSync(path.join(config.usersDir, username)));
-    } catch(e) {
-        return null;
-    }
+exports.loadUser = function loadUser(username, done) {
+    redisc.get(util.format(config.userKey, username), function(err, reply) {
+        if(reply == null) {
+            return done(null, null);
+        }
+        var user = JSON.parse(reply);
 
-    user.username = username;
-    user.authenticationDate = moment(user.authenticationDate);
-    user.services = user.services.filter(function(key) {
-        return !!services.byName[key];
-    }).map(function(key) {
-        return extend({ name: key }, services.byName[key]);
+        user.username = username;
+        user.authenticationDate = moment(user.authenticationDate);
+        user.services = user.services.filter(function(key) {
+            return !!services.byName[key];
+        }).map(function(key) {
+            return extend({ name: key }, services.byName[key]);
+        });
+        done(null, user);
     });
-    return user;
 };
 
-exports.saveUser = function saveUser(user) {
+exports.saveUser = function saveUser(user, done) {
     var user = extend({}, user);
     user.services = Object.keys(user.services).map(function(key) {
         return user.services[key].name;
@@ -31,5 +33,5 @@ exports.saveUser = function saveUser(user) {
     user.authenticationDate = user.authenticationDate.toISOString();
     var username = user.username;
     delete user.username;
-    fs.writeFileSync(path.join(config.usersDir, username), JSON.stringify(user));
+    redisc.set(util.format(config.userKey, username), JSON.stringify(user), done);
 };

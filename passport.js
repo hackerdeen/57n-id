@@ -19,61 +19,65 @@ passport.use(new (require('passport-local').Strategy)(function(username, passwor
             return done(err);
         }
 
-        var user = users.loadUser(username) || {};
-        user.username = username;
-        user.services = user.services || [];
-        user.authenticationDate = moment();
-        user.isMember = false;
-        user.isAdmin = false;
-        client.search(userDN, {
-            scope: "base",
-            filter: "(uid=*)",
-            attributes: ["uid"]
-        }, function(err, res) {
-            if(err) {
-                client.unbind();
-                return done(err);
-            }
+        users.loadUser(username, function(err, user) {
+            user = user || {};
+            user.username = username;
+            user.services = user.services || [];
+            user.authenticationDate = moment();
+            user.isMember = false;
+            user.isAdmin = false;
 
-            res.on("searchEntry", function(entry) {
-                user.username = entry.object.uid;
-            }).on("error", function(err) {
-                client.unbind();
-                done(err);
-            }).on("end", function(result) {
-                if(result.status != 0) {
+            client.search(userDN, {
+                scope: "base",
+                filter: "(uid=*)",
+                attributes: ["uid"]
+            }, function(err, res) {
+                if(err) {
                     client.unbind();
-                    return done(ldap.getError(result));
+                    return done(err);
                 }
 
-                client.search(config.ldapGroupsDN, {
-                    scope: "sub",
-                    filter: "(member="+userDN+")",
-                    attributes: ["dn"]
-                }, function(err, res) {
-                    if(err) {
+                res.on("searchEntry", function(entry) {
+                    user.username = entry.object.uid;
+                }).on("error", function(err) {
+                    client.unbind();
+                    done(err);
+                }).on("end", function(result) {
+                    if(result.status != 0) {
                         client.unbind();
-                        return done(err);
+                        return done(ldap.getError(result));
                     }
 
-                    res.on("searchEntry", function(entry) {
-                        var dn = entry.dn.toString();
-                        if(dn == config.memberGroup) {
-                           user.isMember = true;
-                        } else if(dn == config.adminGroup) {
-                            user.isAdmin = true;
-                        }
-                    }).on("error", function(err) {
-                        client.unbind();
-                        done(err);
-                    }).on("end", function(result) {
-                        client.unbind();
-                        if(result.status != 0) {
-                            return done(ldap.getError(result));
+                    client.search(config.ldapGroupsDN, {
+                        scope: "sub",
+                        filter: "(member="+userDN+")",
+                        attributes: ["dn"]
+                    }, function(err, res) {
+                        if(err) {
+                            client.unbind();
+                            return done(err);
                         }
 
-                        users.saveUser(user);
-                        done(null, user);
+                        res.on("searchEntry", function(entry) {
+                            var dn = entry.dn.toString();
+                            if(dn == config.memberGroup) {
+                               user.isMember = true;
+                            } else if(dn == config.adminGroup) {
+                                user.isAdmin = true;
+                            }
+                        }).on("error", function(err) {
+                            client.unbind();
+                            done(err);
+                        }).on("end", function(result) {
+                            client.unbind();
+                            if(result.status != 0) {
+                                return done(ldap.getError(result));
+                            }
+
+                            users.saveUser(user, function(err) {
+                                done(null, user);
+                            });
+                        });
                     });
                 });
             });
@@ -86,9 +90,10 @@ passport.serializeUser(function(user, done) {
 });
 
 passport.deserializeUser(function(username, done) {
-    var user = users.loadUser(username);
-    if(!user) {
-        done("Can't read user file");
-    }
-    done(null, user);
+    users.loadUser(username, function(err, user) {
+        if(!user) {
+            done("Can't read user file");
+        }
+        done(null, user);
+    });
 });

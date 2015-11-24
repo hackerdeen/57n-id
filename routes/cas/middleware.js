@@ -21,12 +21,12 @@ module.exports = function(req, res, next) {
         return service && services.byUrl[service] &&
           (services.byUrl[service].needMember ? config.memberSite : config.guestSite) == req.hostname;
     };
-    req.saveService = function() {
+    req.saveService = function(done) {
         if(req.isValidService() && !req.user.services.some(function(userService) {
-            return userService.url == service;
+            done(null, userService.url == service);
         })) {
             req.user.services.push(services.byUrl[service]);
-            users.saveUser(req.user);
+            users.saveUser(req.user, done);
         }
     };
     res.redirectToService = function(params) {
