@@ -6,7 +6,9 @@ exports.get = function(req, res) {
     if(req.isCorrectUserType() && !req.query.renew) {
         if(req.isValidService()) {
             return req.saveService(function(err) {
-                res.redirectToService({ticket: req.generateServiceTicket(false)});
+                req.generateServiceTicket(false, function(err, ticket) {
+                    res.redirectToService({ticket: ticket});
+                });
             });
         } else {
             return res.redirect("/");
@@ -36,7 +38,9 @@ exports.post = [passport.authenticate("local", {
         }
 
         return req.saveService(function(err) {
-            res.redirectToService({ticket: req.generateServiceTicket(true)});
+            req.generateServiceTicket(true, function(err, ticket) {
+                res.redirectToService({ticket: ticket});
+           });
         });
     } else {
         return res.redirect("/");

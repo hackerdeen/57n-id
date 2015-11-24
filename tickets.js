@@ -1,43 +1,40 @@
-var fs = require("fs");
+var util = require("util");
 var path = require("path");
 var moment = require("moment");
 var uid2 = require("uid2");
 
 var config = require("./config.js");
+var redisc = require("./redis.js");
 
-exports.create = function create(prefix, expires, info) {
-    if(!info) {
+exports.create = function create(prefix, expires, info, done) {
+    if(!done) {
+        done = info;
         info = expires;
-        expires = moment().add(5, "m");
+        expires = moment.duration(5, "m");
     }
     var ticket = prefix+uid2(24);
-    fs.writeFileSync(path.join(config.ticketsDir, ticket), JSON.stringify({
-        expires: expires.toISOString(),
-        info: info
-    }));
-    return ticket;
+    redisc.setex(util.format(config.ticketKey, ticket), expires.asSeconds(), JSON.stringify(info), function(err) {
+        done(null, ticket);
+    });
 };
 
-exports.load = function load(ticket, destroy) {
+exports.load = function load(ticket, destroy, done) {
     if(!/^[A-Za-z0-9-]+$/.test(ticket)) {
-        return null;
+        return done("Invalid ticket");
     }
 
-    try {
-        var packet = JSON.parse(fs.readFileSync(path.join(config.ticketsDir, ticket)));
-    } catch (e) {
-        return null;
-    }
-
-    if(destroy) {
-        try {
-            fs.unlinkSync(path.join(config.ticketsDir, ticket));
-        } catch (e) {}
-    }
-
-    if(moment(packet.expires).isBefore()) {
-        return null;
+    var key = util.format(config.ticketKey, ticket);
+    if(!destroy) {
+        redisc.get(key, parse);
     } else {
-        return packet.info;
+        redisc.multi().get(key, parse).
+                       del(key).exec();
+    }
+
+    function parse(err, reply) {
+        if(reply == null) {
+            return done("Non-existent ticket");
+        }
+        done(null, JSON.parse(reply));
     }
 };

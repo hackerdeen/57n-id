@@ -8,14 +8,14 @@ var tickets = require("../../tickets.js");
 
 module.exports = function(req, res, next) {
     var service = req.query.service || req.body.service;
-    req.generateServiceTicket = function(newLogin) {
-        return tickets.create("ST-", {
+    req.generateServiceTicket = function(newLogin, done) {
+        tickets.create("ST-", {
             site: req.hostname,
             service: service,
             username: req.user.username,
             authenticationDate: req.user.authenticationDate.toISOString(),
             newLogin: newLogin
-        });
+        }, done);
     };
     req.isValidService = function() {
         return service && services.byUrl[service] &&
@@ -23,10 +23,12 @@ module.exports = function(req, res, next) {
     };
     req.saveService = function(done) {
         if(req.isValidService() && !req.user.services.some(function(userService) {
-            done(null, userService.url == service);
+            return userService.url == service;
         })) {
             req.user.services.push(services.byUrl[service]);
             users.saveUser(req.user, done);
+        } else {
+            done(null);
         }
     };
     res.redirectToService = function(params) {
