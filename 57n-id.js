@@ -1,3 +1,4 @@
+#!/usr/bin/nodejs
 // TODO: proxy tokens
 
 var express = require("express");
