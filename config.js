@@ -1,4 +1,5 @@
 var path = require("path");
+var fs = require("fs");
 
 // Configurable
 exports.memberSite = memberSite = "id.57north.org.uk";
@@ -9,7 +10,7 @@ exports.ldapGroupsDN = ldapGroupsDN = "ou=groups,dc=57north,dc=org,dc=uk";
 exports.memberGroup = memberGroup = "cn=members,"+ldapGroupsDN;
 exports.adminGroup = adminGroup = "cn=id-admins,"+ldapGroupsDN;
 exports.idSystemDN = idSystemDN = "uid=id-admin,ou=special-users,dc=57north,dc=org,dc=uk";
-exports.idSystemPassword = idSystemPassword = "poor stood burst island";
+exports.idSystemPassword = idSystemPassword = fs.readFileSync(path.join(__dirname, "ldap-password.txt"), "utf8").trim();
 exports.redisUrl = redisUrl = "/tmp/redis-57n-id.sock";
 
 // Probably don't touch these
