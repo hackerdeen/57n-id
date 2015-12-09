@@ -18,7 +18,8 @@ exports.post = function(req, res) {
         client.add(userDN, {
             objectClass: ["inetOrgPerson", "simpleSecurityObject"],
             uid: req.body.username,
-            cn: req.body.cn,
+            cn: req.body.gn,
+            givenName: req.body.gn,
             sn: req.body.sn,
             userPassword: ""
         }, function(err) {

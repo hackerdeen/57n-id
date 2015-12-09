@@ -19,7 +19,7 @@ exports.get = function(req, res) {
             client.search(userDN, {
                 scope: "base",
                 filter: "(uid=*)",
-                attributes: ["uid", "cn", "sn"]
+                attributes: ["uid", "givenName", "sn"]
             }, function(err, result) {
                 if(err) {
                     client.unbind();
@@ -28,13 +28,13 @@ exports.get = function(req, res) {
 
                 var dn = "";
                 var username = "";
-                var cn = "";
+                var givenName = "";
                 var sn = "";
 
                 result.on("searchEntry", function(entry) {
                     dn = entry.dn;
                     username = entry.object.uid;
-                    cn = entry.object.cn;
+                    givenName = entry.object.givenName;
                     sn = entry.object.sn;
                 }).on("error", function(err) {
                     client.unbind();
@@ -85,7 +85,7 @@ exports.get = function(req, res) {
                                 }
                                 res.render("create-user", {
                                     username: username,
-                                    cn: cn,
+                                    gn: givenName,
                                     sn: sn,
                                     groups: groups
                                 });
@@ -117,7 +117,8 @@ exports.post = function(req, res) {
             client.add(userDN, {
                 objectClass: ["inetOrgPerson", "simpleSecurityObject"],
                 uid: req.body.username,
-                cn: req.body.cn,
+                cn: req.body.gn,
+                givenName: req.body.gn,
                 sn: req.body.sn,
                 userPassword: ""
             }, function(err) {
@@ -154,7 +155,13 @@ exports.post = function(req, res) {
                 new ldap.Change({
                     operation: "replace",
                     modification: {
-                        cn: req.body.cn
+                        cn: req.body.gn
+                    }
+                }),
+                new ldap.Change({
+                    operation: "replace",
+                    modification: {
+                        givenName: req.body.gn
                     }
                 }),
                 new ldap.Change({
