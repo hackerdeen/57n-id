@@ -1,3 +1,4 @@
+var extend = require("util")._extend;
 var async = require("async");
 var ldap = require("ldapjs");
 var asn1 = require("asn1");
@@ -19,7 +20,7 @@ exports.get = function(req, res) {
             client.search(userDN, {
                 scope: "base",
                 filter: "(uid=*)",
-                attributes: ["uid", "givenName", "sn"]
+                attributes: ["uid", "givenName", "sn", "sshPublicKey"]
             }, function(err, result) {
                 if(err) {
                     client.unbind();
@@ -30,12 +31,14 @@ exports.get = function(req, res) {
                 var username = "";
                 var givenName = "";
                 var sn = "";
+                var sshPublicKey = "";
 
                 result.on("searchEntry", function(entry) {
                     dn = entry.dn;
                     username = entry.object.uid;
                     givenName = entry.object.givenName;
                     sn = entry.object.sn;
+                    sshPublicKey = entry.object.sshPublicKey;
                 }).on("error", function(err) {
                     client.unbind();
                     return res.redirect("/");
@@ -87,6 +90,7 @@ exports.get = function(req, res) {
                                     username: username,
                                     gn: givenName,
                                     sn: sn,
+                                    sshPublicKey: sshPublicKey,
                                     groups: groups
                                 });
                             });
@@ -114,14 +118,14 @@ exports.post = function(req, res) {
         }
 
         if(req.params[0] == "create") {
-            client.add(userDN, {
-                objectClass: ["inetOrgPerson", "simpleSecurityObject"],
+            client.add(userDN, extend({
+                objectClass: ["inetOrgPerson", "simpleSecurityObject", "ldapPublicKey"],
                 uid: req.body.username,
                 cn: req.body.gn,
                 givenName: req.body.gn,
                 sn: req.body.sn,
                 userPassword: ""
-            }, function(err) {
+            }, req.body.sshPublicKey ? {sshPublicKey: req.body.sshPublicKey} : {}), function(err) {
                 if(err) {
                     return res.redirect("/createUser");
                 }
@@ -170,6 +174,17 @@ exports.post = function(req, res) {
                         sn: req.body.sn
                     }
                 }),
+                (req.body.sshPublicKey ? new ldap.Change({
+                    operation: "replace",
+                    modification: {
+                        sshPublicKey: req.body.sshPublicKey
+                    }
+                }) : new ldap.Change({
+                    operation: "delete",
+                    modification: {
+                        sshPublicKey: []
+                    }
+                }))
             ], function(err) {
                 if(err) {
                     client.unbind();

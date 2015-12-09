@@ -21,6 +21,12 @@
     </div>
   </div>
   <div class="form-group">
+    <label for="sshPublicKey" class="col-md-4 control-label">SSH public key</label>
+    <div class="col-md-8">
+      <input type="text" class="form-control" id="sshPublicKey" name="sshPublicKey" {?sshPublicKey}value="{sshPublicKey}"{/sshPublicKey}>
+    </div>
+  </div>
+  <div class="form-group">
     <label for="groups" class="col-md-4 control-label">Groups</label>
     <div class="col-md-8">
       <select multiple class="form-control" name="groups[]">

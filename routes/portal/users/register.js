@@ -1,3 +1,4 @@
+var extend = require("util")._extend;
 var ldap = require("ldapjs");
 var asn1 = require("asn1");
 
@@ -15,14 +16,14 @@ exports.post = function(req, res) {
     var userDN = new ldap.RDN({uid: req.body.username}).toString()+","+config.ldapUsersDN;
 
     client.bind(config.idSystemDN, config.idSystemPassword, function(err) {
-        client.add(userDN, {
-            objectClass: ["inetOrgPerson", "simpleSecurityObject"],
+        client.add(userDN, extend({
+            objectClass: ["inetOrgPerson", "simpleSecurityObject", "ldapPublicKey"],
             uid: req.body.username,
             cn: req.body.gn,
             givenName: req.body.gn,
             sn: req.body.sn,
             userPassword: ""
-        }, function(err) {
+        }, req.body.sshPublicKey ? {sshPublicKey: req.body.sshPublicKey} : {}), function(err) {
             if(err) {
                 return res.redirect("/register");
             }
